@@ -88,7 +88,7 @@ for ii=1:numCases %each variable creates pages once
                         end
                     end
                 end
-                saveas(gcf,['diffs' rowVar '_x_' colVar '_by_' pageVar '_' num2str(pp)],'epsc')
+                saveas(gcf,fullfile(outputPath,['diffs' rowVar '_x_' colVar '_by_' pageVar '_' num2str(pp)]),'epsc')
             end
         end
     end

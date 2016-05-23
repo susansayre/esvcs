@@ -2,6 +2,12 @@ clear all; close all;
 dbstop if error
 global G;
 
+runID = datestr(now,'yyyymmdd_HHMMSS');
+outputPath = fullfile('storedOutput',runID);
+if ~exist(outputPath,'dir')
+    mkdir(outputPath)
+end
+
 %normalize everything on mean env value = 10 and variance env value = 1;
 %This implies that the likelihood of negative env values is extremely
 %small;
@@ -147,7 +153,7 @@ for ii=1:size(valArray,1)
     
 	expectedPayoff = expVal2(v1,muBig(:,ii),sigmaBig(:,:,ii));
     
-    saveas(gcf,['expVal2case' num2str(ii)],'epsc')
+    saveas(gcf,fullfile(outputPath,['expVal2case' num2str(ii)]),'epsc')
     close
     
     if isempty(expectedPayoff)
@@ -190,12 +196,12 @@ for ii=1:size(valArray,1)
         numDelay(jj,ii) = sum(choicej==2);
         numConserve(jj,ii) = sum(choicej==3);
     end
-    
+        
     figure()
     [c,h] = contour(tempPayMat,permPayMat,reshape(regPayoff(ii,:),nx1,nx2)); clabel(c,h);
     hold on;
     plot(x(ii,1),x(ii,2),'x')
-    saveas(gcf,['regPayoff_' num2str(ii)],'epsc')
+    saveas(gcf,fullfile(outputPath,['regPayoff_' num2str(ii)]),'epsc')
     
     figure()
     subplot(2,2,1)
@@ -213,11 +219,11 @@ for ii=1:size(valArray,1)
     hold on;
     plot(x(ii,1),x(ii,2),'x')
     
-    saveas(gcf,['choices_' num2str(ii)],'epsc')
+    saveas(gcf,fullfile(outputPath,['choices_' num2str(ii)]),'epsc')
     close all
     
 end
 
-save outputFile
+save(fullfile(outputPath,'outputFile'))
 
 	
