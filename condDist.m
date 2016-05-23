@@ -20,6 +20,8 @@ else
     keyboard
 end
 
+%conditional variance depends on which variables are known but does NOT
+%depend on the specific values of those variables
 condSigma = sigmaMat(varInds,varInds)-sigmaMat(varInds,condInds)*inv(sigmaMat(condInds,condInds))*sigmaMat(condInds,varInds);
 
 end
