@@ -18,7 +18,7 @@ varEnv = 1;
 delta = .95;
 
 compStat = {
-    'muValRat',     'ratio of mean v1 to mean env',                     [1.5];
+    'muValRat',     'ratio of mean v1 to mean env',                     [1];
     'varValRat',    'ratio of the variance of v1 to variance of env',	[.5, 1.5];
     'varVCRat',     'ratio of the variance of vc to variance of v1',    [0]; %0 means value change is constant
     'rhoEV',        'covariance between de and dv',                     [-.5];
@@ -27,11 +27,13 @@ compStat = {
     'vardvRat',     'ratio of the variance of dv to variance of v1',    [.25,.75];
     'vardvcRat',    'ratio of the variance of dvc to variance of vc',   [1]; %1 means no random value change
     'muValChangeP', '% increase in mean value',                         [0]; %0 means no trend in value
+    'G.envQuad',    '',                                                 [0];
+    'vardeRat',     'ratio of the variance of de to variance of env',   [.9];
 };
 
 prepareCompStatArray
 randomizationStructure
-
+G.discount = delta;
 %conduct the comparative static loops
 for ii=1:size(valArray,1)
 %for ii=1:1
@@ -41,18 +43,19 @@ for ii=1:size(valArray,1)
     end
     
     %call script to compute A, mu, and sigma matrices/vectors from the
-    %compStat parameters for this case
+    %compStat parameters for this case and use quadrature to generate reasonable samples
     computeMats
-    
-    %use quadrature to generate two separate samples for random variables
-    drawRandoms
-    
+       
     %next steps -- figure out how regulator optimizes given samples. Inner
     %optimization is for each parcel, across possible randMat draws
     
     %outer optimization will be across detMat draws because they aren't
     %known a priori. Have to account for the possibility that only certain
     %parcels will remain convertible in period 1.
+    offer1 = [1.01*(1-delta)*muOut(G.ind.out.v1) 1.01*muOut(G.ind.out.v1)];
+    G.ind.offer1.temp = 1; G.ind.offer1.perm = 2;
+    [expRegVal,expLandVal,choice] = land1Choice(offer1,randArrayStruct,randWgtStruct);
+    [optOffer,regPayoff,exf] = fminsearch(@(x) -land1Choice(x,randArrayStruct,randWgtStruct),offer1);
 end
     
     
