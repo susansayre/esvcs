@@ -16,7 +16,6 @@ conserved = convertible.*(repmat(offerVector,1,randCases)>v2);
 converted = convertible.*(1-conserved); %this version assumes that converted land provides all payoff in 1st period
 
 caseProbs = sum(regRandWgts,1);
-if abs(sum(caseProbs)-1)>1e-14; keyboard; end
 
 svcsTotal = sum(conserved.*env.*regRandWgts,1)./caseProbs; %1 x randCases vector of total svc values
 valTotal = sum(converted.*v2.*regRandWgts,1)./caseProbs;

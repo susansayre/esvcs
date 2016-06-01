@@ -10,14 +10,15 @@ options.maxgen = 10000;
 options.numits = 10000;
 options.maxgenlast = 1000; 
 maxOffer = max(randArrayStruct.reg2(:,:,G.ind.out.v2),[],2);
+offerVector2 = sum(randArrayStruct.reg2(:,:,G.ind.out.v2).*randWgtStruct.reg2.*delay,2)./sum(randWgtStruct.reg2,2);
 options = optimset('Display','off');
 while numChange>0
     iter = iter+1;
     convertible = delay;
    %predict regulator choice given convertible decisions
 %    [offerVector2,fvalg,exfg,results] = genetic('regObj2',[0*maxOffer maxOffer],options,convertible,randArrayStruct.reg2,randWgtStruct.reg2);
-    startPoint = sum(randArrayStruct.reg2(:,:,G.ind.out.v2).*randWgtStruct.reg2.*convertible,2)./sum(randWgtStruct.reg2,2);
-    [offerVector2,fval,exf] = fmincon(@(x) regObj2(x,convertible,randArrayStruct.reg2,randWgtStruct.reg2),startPoint,[],[],[],[],0*maxOffer,maxOffer,'',options);
+    
+    [offerVector2,fval,exf] = fmincon(@(x) regObj2(x,convertible,randArrayStruct.reg2,randWgtStruct.reg2),offerVector2,[],[],[],[],0*maxOffer,maxOffer,'',options);
     if exf<0;
         keyboard;
     end
@@ -39,8 +40,12 @@ while numChange>0
     delay = (choiceReg2Mat==3);
     numChange = numel(find(convertible-delay));
     %fprintf('%d',numChange,'/n');
+    if iter==20
+        keyboard
+    end
 end
 
+%display(['Finished inner optimization in ' num2str(iter) ' steps'])
 conserve = (choiceReg2Mat==2);
 convert = (choiceReg2Mat==1);
 
@@ -49,10 +54,7 @@ rowProbs = sum(randWgtStruct.reg2,2);
 totalSvcs1 = sum(delay.*randArrayStruct.reg2(:,:,G.ind.out.env).*randWgtStruct.reg2,1)./sum(randWgtStruct.reg2,1);
 totalPayoff1 = (1-G.discount)*(totalSvcs1 + G.envQuad*totalSvcs1.^2)*sum(randWgtStruct.reg2,1)';
 
-%keyboard
 expRegVal = rowProbs'*(-G.discount*fval + sum((convert.*randArrayStruct.reg2(:,:,G.ind.out.v1) + conserve.*randArrayStruct.reg2(:,:,G.ind.out.env)).*randWgtStruct.reg2,2));
 expRegVal = expRegVal + totalPayoff1;
 
-%Problem I'm having -- trying to figure out what the regulator thinks total services will be in period 1. Not sure if
-%this version is right.
     

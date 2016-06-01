@@ -1,5 +1,5 @@
 %creates the basic problem structure
-primitives = {'de','dv','dvc','rv','rvc','re','const'}; %vector of "primitive" characteristics each parcel possesses
+primitives = {'de','dv','dvc','rv','rvc','re'}; %vector of "primitive" characteristics each parcel possesses
 outputs = {'v1','v2','env','envD','v1D','v2D'}; %vector of payoff relevant characterisitics each parcel posses, %critical that v1 is first
 %outputs = A*prim;
 
