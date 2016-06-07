@@ -91,7 +91,7 @@ drawThese = find(varies);
         
 %consider which case we are in
 %Generate a representative sample with weights for the outputs of interest
-approxNodes = 5; %number of nodes for each variable
+approxNodes = 7; %number of nodes for each variable
 casesArray = approxNodes*varies';
 casesArray(find(varies-1))=1;
 [randMat,randWgtVec] = qnwnorm(casesArray(drawThese),muOut(drawThese),sigmaOut(drawThese,drawThese));
@@ -107,3 +107,12 @@ for di=1:numel(G.decisionMakers)
     thisDecisionMaker = G.decisionMakers{di};
     eval(['[randArrayStruct.' thisDecisionMaker ',randWgtStruct.' thisDecisionMaker '] = dmInfo(G.' thisDecisionMaker ',randOutArray,randWgtArray);'])
 end
+
+r = 1/G.discount - 1;
+if numPeriods == Inf
+    G.payoff2Factor = 1/r;
+else
+    G.payoff2Factor = (1-1/(1+r)^numPeriods)/r;
+end
+
+G.envLin = 1-G.envQuad*meanEnv;

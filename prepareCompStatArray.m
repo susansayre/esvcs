@@ -16,3 +16,11 @@ for ii=1:length(compStat)
         valInds = [valInds; newInds];        
 	end
 end
+
+%set other indicator variables
+G.ind.choice.convert = 1;
+G.ind.choice.conserve = 2;
+G.ind.choice.delay = 3;
+
+G.ind.offer1.temp = 1; 
+G.ind.offer1.perm = 2;
