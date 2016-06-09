@@ -1,27 +1,18 @@
-function [expRegVal,expLandVal,period1Choice] = land1Choice(offer1,randArrayStruct,randWgtStruct,G)
-
-%extract info about dimensions
-ovCases = size(randArrayStruct.reg2,1); %number of cases representing parcels that regulator could observe in period 2
-v1Cases = size(randArrayStruct.land1,1); %number of cases of different parcels making choices in period 1
-colRepeats = size(randArrayStruct.land1,2)/ovCases; %tells us how many times v1 has to be repeated to get full matrix
+function [expRegVal,expLandVal] = land1Choice(offer1,v1Values,randValues,G,caseID)
 
 %extract/set values that are constant over the looping
-v1Land = randArrayStruct.land1(:,:,G.ind.out.v1); %should vary across rows and be constant across columns
-v2Land = randArrayStruct.land1(:,:,G.ind.out.v2); %should vary across both rows and columns
-choices(:,G.ind.choice.convert) = v1Land(:,1)*(1+G.payoff2Factor);
-choices(:,G.ind.choice.conserve) = offer1(G.ind.offer1.perm)*(ones(size(v1Land(:,1)))+G.payoff2Factor);
+if ~exist('caseID','var')
+    period1Choice = G.ind.choice.delay*ones(size(randValues,1),1); %initialize all parcels to delay
+    offer0 = 0.5*mean(randValues(:,:,G.ind.reg2rand.v2,:),2) + 0.5*mean(randValues(:,:,G.ind.reg2rand.env,:),2);
+else
+    load(['solGuesses/' caseID])
+end
 
-%initialize rational expectations loop for landowners
-period1Choice = G.ind.choice.delay*ones(v1Cases,1);
-delay = repmat((period1Choice==G.ind.choice.delay)',ovCases,size(randWgtStruct.reg2,2)/v1Cases);
 numChange = 10;
 iter = 0;
-options.showiter=1;
-options.maxgen = 5000;
-options.numits = 5000;
-options.maxgenlast = 1000; 
-maxOffer = max(randArrayStruct.reg2(:,:,G.ind.out.v2),[],2);
-offerVector2 = sum(randArrayStruct.reg2(:,:,G.ind.out.v2).*randWgtStruct.reg2.*delay,2)./sum(randWgtStruct.reg2,2);
+maxOffer = squeeze(max(randValues(:,:,G.ind.reg2rand.v2,:),[],2));
+choices(:,G.ind.choice.convert) = v1Values*(1+G.payoff2Factor);
+choices(:,G.ind.choice.conserve) = offer1(G.ind.offer1.perm)*(1+G.payoff2Factor);
 
 options = optimset('Display','off','MaxFunEvals',10e5);
 % options.showiter = 0;
@@ -29,41 +20,48 @@ options = optimset('Display','off','MaxFunEvals',10e5);
 while numChange>0
     iter = iter+1;
     period1ChoiceOld = period1Choice;
-   %predict regulator choice given a set of period1 choices by landowners
-    p1ChoiceMat = repmat(period1ChoiceOld',ovCases,size(randWgtStruct.reg2,2)/v1Cases);
-    [test] = regObj2(offerVector2,p1ChoiceMat,randArrayStruct.reg2,randWgtStruct.reg2,G);
-%     [offerVector2,fval,exf] = genetic('regObj2',[0*maxOffer maxOffer],options,p1ChoiceMat,randArrayStruct.reg2,randWgtStruct.reg2);
-    [offerVector2,fval,exf] = fmincon(@(x) regObj2(x,p1ChoiceMat,randArrayStruct.reg2,randWgtStruct.reg2,G),offerVector2,[],[],[],[],0*maxOffer,maxOffer,'',options);
-%     if exf<1;
-%         keyboard;
-%     end
-    %offerVector2 is envDcases*v1Dcases*v2Dcases x 1
-    %next line turns into a row vector, repeats for each v1case and then replicates for each corresponding env and v2 case 
-    expOffer = repmat(offerVector2',v1Cases,colRepeats); %offerVector depends only on envD, v1D, and v2D
-    valDelayCond = max(expOffer,v2Land); %landowner knows she will select the highest offer next period
-    expValDelay = sum(valDelayCond.*randWgtStruct.land1,2)./sum(randWgtStruct.land1,2); %integrate out envD, v1D, v2D, v2, and env to get expectation of landowner
+    %predict regulator choice given a set of period1 choices by landowners
+    for ii=1:size(randValues,4)
+        %[offerVector2,fval,exf] = genetic('regObj2',[0*maxOffer maxOffer],options,p1ChoiceMat,randArrayStruct.reg2,randWgtStruct.reg2);
+        thisOffer0 = offer0(:,ii).*(period1Choice==G.ind.choice.delay);
+        test = regObj2(thisOffer0,period1Choice,randValues(:,:,:,ii),G);
+        [optOffer,fval,exf] = fmincon(@(x) regObj2(x,period1Choice,randValues(:,:,:,ii),G),thisOffer0,[],[],[],[],0*thisOffer0,maxOffer(:,ii),'',options);
+        optOffers(:,ii) = optOffer;      
+        nonConvertibleParcels = find(period1Choice~=G.ind.choice.delay);
+        [expPayoffReg2(ii),expPayoffLand2(:,ii)] = regObj2(optOffer,period1Choice,randValues(:,:,:,ii),G);
+        tic
+        for jj=1:numel(nonConvertibleParcels) 
+            thisPeriod1Choice = period1Choice;
+            thisInd = nonConvertibleParcels(jj);
+            thisPeriod1Choice(thisInd) = G.ind.choice.delay;
+            [thisOptOffer,thisfval,thisexf] = fmincon(@(x) singleObj(x,thisInd,optOffer,thisPeriod1Choice,randValues(:,:,:,ii),G),v1Values(thisInd),[],[],[],[],0,maxOffer(thisInd,ii),'',options);
+            expPayoffLand2(thisInd,ii) = singleObj(thisOptOffer,thisInd,optOffer,thisPeriod1Choice,randValues(:,:,:,ii),G);
+        end
+        toc
+    end
+    expValDelay = mean(expPayoffLand2,2); %integrate out envD, v1D, v2D, v2, and env to get expectation of landowner
     %expValDelay is v1Cases x 1;
     choices(:,G.ind.choice.delay) = offer1(G.ind.offer1.temp) + G.payoff2Factor*expValDelay; 
     [expLandVal,period1Choice] = max(choices,[],2);
     numChange = numel(find(period1Choice-period1ChoiceOld));
-    %fprintf('%d',numChange,'/n');
+    fprintf('%d\n',numChange);
     if iter==20
 %         keyboard
     end
 end
 
-p1ChoiceMat = repmat(period1Choice',ovCases,size(randWgtStruct.reg2,2)/v1Cases);
+conserve = (period1Choice==G.ind.choice.conserve);
+%convert = (period1Choice==G.ind.choice.convert);
+delay = (period1Choice==G.ind.choice.delay);
 
-%display(['Finished inner optimization in ' num2str(iter) ' steps'])
-conserve = (p1ChoiceMat==G.ind.choice.conserve);
-convert = (p1ChoiceMat==G.ind.choice.convert);
-delay = (p1ChoiceMat==G.ind.choice.delay);
+totalSvcs1 = squeeze(mean(repmat(conserve+delay,1,size(randValues,2),size(randValues,4)).*squeeze(randValues(:,:,G.ind.reg2rand.env,:))));
+expectedEnvPayoff1 = mean(mean(totalSvcs1 + G.envQuad*totalSvcs1.^2));
 
-rowProbs = sum(randWgtStruct.reg2,2);
-
-totalSvcs1 = sum((conserve+delay).*randArrayStruct.reg2(:,:,G.ind.out.env).*randWgtStruct.reg2,1)./sum(randWgtStruct.reg2,1);
-expectedEnvPayoff1 = (totalSvcs1 + G.envQuad*totalSvcs1.^2)*sum(randWgtStruct.reg2,1)';
-expectedValPayoff1 = sum(sum(((convert.*randArrayStruct.reg2(:,:,G.ind.out.v1) - G.fundCostP*(G.ind.offer1.perm*conserve + G.ind.offer1.temp*delay)).*randWgtStruct.reg2)));
-
-expRegVal = expectedValPayoff1 + expectedEnvPayoff1 - fval*G.payoff2Factor;
-
+expRegVal = expectedEnvPayoff1 - mean(expPayoffReg2)*G.payoff2Factor;
+keyboard
+if exist('caseID','var')
+    if ~exist('solGuesses','dir')
+        mkdir('solGuesses')
+    end
+    save(['solGuesses/' caseID],'period1Choice','optOffers')
+end

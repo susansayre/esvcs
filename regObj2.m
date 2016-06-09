@@ -1,27 +1,25 @@
-function expPayoff = regObj2(offerVector,previousChoice,regRandArray,regRandWgts,G)
-%returns the regulator's payoff as a function of the vector of offers made to particular parcels
-%inputs:
-%   offerVector -- parcelNodes x 1 vector of offers to individual landowners
-%   parcelDetMat -- parcelNodes x numKnown+1 matrix of values for the characteristics known by regulator. Last column is
-%   the accompanying weights
-%   randDrawMat -- randNodes x numRand+1 matrix of values for the characteristics unknown by anyone. Last column is the
-%   accompanying weights
+function [expRegPayoff,expLandPayoff] = regObj2(offerVector,previousChoice,randValues,G)
+%returns the regulator's payoff in period 2 as a function of the vector of offers made to particular parcels
+%when making offers, regulator knows what choice the parcel made last period, v1D, v2D, and envD
+%offerVector and previousChoice are parcels x 1 vectors
+%randValues is a parcels x randSamples x reg2unknowns array representing possible values for each consequential variable not known by
+%the regulator in period2
+%each column is equally likely
 
-convertible = (previousChoice==G.ind.choice.delay);
-randCases = size(regRandWgts,2);
-v2 = regRandArray(:,:,G.ind.out.v2);
-env = regRandArray(:,:,G.ind.out.env);
+randCases = size(randValues,2);
+convertible = repmat((previousChoice==G.ind.choice.delay),1,randCases);
+conservedEarly = repmat((previousChoice==G.ind.choice.conserve),1,randCases);
+v2 = randValues(:,:,G.ind.reg2rand.v2);
+env = randValues(:,:,G.ind.reg2rand.env);
 
 offerMat = repmat(offerVector,1,randCases);
 conservedNow = convertible.*(offerMat>v2);
-conservedAll = conservedNow + (previousChoice==G.ind.choice.conserve);
+conservedAll = conservedNow + conservedEarly;
 converted = 1-conservedAll; %this version assumes that land converted in period 1 yields v1 in that period and v2 for remaining periods
 
-caseProbs = sum(regRandWgts,1);
+svcsTotal = mean(conservedAll.*env); %1 x randCases vector of total svc values
+valTotal = mean(converted.*v2);
+fundCostTotal = G.fundCostP*mean(conservedNow.*offerMat);
 
-svcsTotal = sum(conservedAll.*env.*regRandWgts,1)./caseProbs; %1 x randCases vector of total svc values
-valTotal = sum(converted.*v2.*regRandWgts,1)./caseProbs;
-fundCostTotal = sum(G.fundCostP*conservedNow.*offerMat.*regRandWgts,1)./caseProbs;
-
-expPayoff = -(valTotal + G.envLin*svcsTotal - fundCostTotal + G.envQuad*svcsTotal.^2)*caseProbs';
-%keyboard
+expRegPayoff = -mean(0*valTotal + G.envLin*svcsTotal - fundCostTotal + G.envQuad*svcsTotal.^2);
+expLandPayoff = mean(max(offerMat,v2),2);

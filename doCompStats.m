@@ -1,4 +1,4 @@
-clear all; close all;
+close all;
 dbstop if error
 
 runID = datestr(now,'yyyymmdd_HHMMSS');
@@ -55,19 +55,22 @@ for ii=1:size(valArray,1)
     %parcels will remain convertible in period 1.
     options = optimset('Display','iter');
     %options.showiter = 1;
-    offer1 = [.2*muOut(G.ind.out.env) 1*muOut(G.ind.out.v1)];
-    maxV1 = max(randArrayStruct.land1(:,1,G.ind.out.v1));
+    offer1 = [1.2*muOut(G.ind.out.v1) 0];
+    maxV1 = max(v1Values);
    
     %[expRegVal,expLandVal,choice] = land1Choice(offer1,randArrayStruct,randWgtStruct);
-    v1Vals = randArrayStruct.land1(:,1,G.ind.out.v1);
-    v1Vals = [0; v1Vals; 1.5*v1Vals(end)];
-    offerCases = gridmake(v1Vals,v1Vals);
-    parfor ti = 1:size(offerCases,1)
-        expRegVal(ti) = land1Choice(offerCases(ti,:),randArrayStruct,randWgtStruct,G);
-    end
-    [regPayoff,caseInd] = max(expRegVal);
-    optOfferGrid = offerCases(caseInd,:);
-    [optOffer,regPayoff2,exf2] = fmincon(@(x) land1Choice(x,randArrayStruct,randWgtStruct,G),optOfferGrid,[],[],[],[],0*optOfferGrid,Inf+optOfferGrid,'',options);
+%     v1Vals = randArrayStruct.land1(:,1,G.ind.out.v1);
+%     v1Vals = [0; v1Vals; 1.5*v1Vals(end)];
+%     offerCases = gridmake(v1Vals,v1Vals);
+%     for ti = 1:size(offerCases,1)
+%         expRegVal(ti) = land1Choice(offerCases(ti,:),randArrayStruct,randWgtStruct,G);
+%     end
+%     [regPayoff,caseInd] = max(expRegVal);
+%     optOfferGrid = offerCases(caseInd,:);
+    %[expRegVal,expLandVal] = land1Choice(offer1,v1Values,randValues,G);
+    %offer1(G.ind.offer1.perm) = mean(expLandVal);
+    [optOffer,regPayoff2,exf2] = fmincon(@(x) land1Choice(x,v1Values,randValues,G),offer1,[],[],[],[],0*offer1,Inf+ offer1,'',options);
+    keyboard
      save(fullfile(outputPath,[ runID '_case' num2str(ii)]))
 end
     

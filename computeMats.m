@@ -41,6 +41,7 @@ end
 
 varies = ones(numel(outputs),1);
 if rank(sigmaPrimMat)<numel(primitives)
+    keyboard
     %check each variable type
     foundCases = 0;
     if sigmaPrimMat(G.ind.prim.de,G.ind.prim.de)==0
@@ -87,32 +88,41 @@ else
     evalStatement={};
 end
 
-drawThese = find(varies);
-        
-%consider which case we are in
-%Generate a representative sample with weights for the outputs of interest
-approxNodes = 7; %number of nodes for each variable
-casesArray = approxNodes*varies';
-casesArray(find(varies-1))=1;
-[randMat,randWgtVec] = qnwnorm(casesArray(drawThese),muOut(drawThese),sigmaOut(drawThese,drawThese));
+v1Num = 30;
+l2InfoNum = 15;
+randNum = 15;
 
-randOutMat(:,drawThese) = randMat;
-for ei=1:numel(evalStatement)
-    eval(evalStatement{ei})
-end
-randOutArray = reshape(randOutMat,[casesArray numel(outputs)]);
-randWgtArray = reshape(randWgtVec,casesArray);
+rng default
+p = haltonset(1,'Skip',1e3,'Leap',1e2);
+p = scramble(p,'RR2');
+v1Rands = norminv(net(p,v1Num));
+v1Rands = sort(v1Rands);
 
-for di=1:numel(G.decisionMakers)
-    thisDecisionMaker = G.decisionMakers{di};
-    eval(['[randArrayStruct.' thisDecisionMaker ',randWgtStruct.' thisDecisionMaker '] = dmInfo(G.' thisDecisionMaker ',randOutArray,randWgtArray);'])
-end
+reg2kInds = [G.ind.out.v1D G.ind.out.v2D G.ind.out.envD];
+v1Values = muOut(G.ind.out.v1) + sigmaOut(G.ind.out.v1,G.ind.out.v1)*v1Rands;
 
+v1ValuesRepeat = repmat(v1Values,l2InfoNum,1);
+
+regCases = mvnrnd(0*reg2kInds,sigmaOut(reg2kInds,reg2kInds)+sigmaOut(reg2kInds,G.ind.out.v1)*inv(sigmaOut(G.ind.out.v1,G.ind.out.v1))*sigmaOut(G.ind.out.v1,reg2kInds),v1Num*l2InfoNum); 
+regCases = regCases' + muOut(reg2kInds)*ones(1,v1Num*l2InfoNum) + sigmaOut(reg2kInds,G.ind.out.v1)/sigmaOut(G.ind.out.v1,G.ind.out.v1)*(v1ValuesRepeat' - muOut(G.ind.out.v1));
+regCases = regCases';
+
+allValues = [v1ValuesRepeat regCases];
+
+randDraw2Inds(G.ind.reg2rand.v2) = G.ind.out.v2;
+randDraw2Inds(G.ind.reg2rand.env) = G.ind.out.env;
+condInds = [G.ind.out.v1 reg2kInds];
+randDraw2 = mvnrnd(0*randDraw2Inds,sigmaOut(randDraw2Inds,randDraw2Inds)+sigmaOut(randDraw2Inds,condInds)/(sigmaOut(condInds,condInds))*sigmaOut(condInds,randDraw2Inds),v1Num*l2InfoNum*randNum);
+randCases = randDraw2' + muOut(randDraw2Inds)*ones(1,v1Num*l2InfoNum*randNum) + sigmaOut(randDraw2Inds,condInds)/(sigmaOut(condInds,condInds))*repmat(allValues' - muOut(condInds)*ones(1,v1Num*l2InfoNum),1,randNum);
+randCases = randCases';
+
+reshapedCases = reshape(randCases,[numel(randDraw2Inds),v1Num,l2InfoNum,randNum]);
+randValues = permute(reshapedCases,[2 4 1 3]); %switch the order so v1 varies on rows, v2 and env across columns, first page is variable and last page is reg2 draw.
+
+G.envLin = 1-G.envQuad*meanEnv;
 r = 1/G.discount - 1;
 if numPeriods == Inf
     G.payoff2Factor = 1/r;
 else
     G.payoff2Factor = (1-1/(1+r)^numPeriods)/r;
 end
-
-G.envLin = 1-G.envQuad*meanEnv;
