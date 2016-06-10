@@ -24,3 +24,8 @@ G.ind.choice.delay = 3;
 
 G.ind.offer1.temp = 1; 
 G.ind.offer1.perm = 2;
+
+G.ind.reg2rand.epriv = 1;
+G.ind.reg2rand.vpriv2 = 2;
+G.ind.reg2rand.epub = 3;
+G.ind.reg2rand.vpub = 4;

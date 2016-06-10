@@ -2,4 +2,6 @@ function[expRegPayoff,expLandPayoff] = singleObj(offer,idx,otherOffer,previousCh
 
 offerVector = otherOffer;
 offerVector(idx) = offer;
-[expRegPayoff,expLandPayoff] = regObj2(offerVector,previousChoice,randValues,G);
+[expRegPayoff,expLandPayoffAll] = regObj2(offerVector,previousChoice,randValues,G);
+
+expLandPayoff = expLandPayoffAll(idx);

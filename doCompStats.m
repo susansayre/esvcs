@@ -1,4 +1,4 @@
-close all;
+clear all; close all;
 dbstop if error
 
 runID = datestr(now,'yyyymmdd_HHMMSS');
@@ -17,19 +17,23 @@ varEnv = 1;
 delta = .95;
 
 compStat = {
-    'muValRat',     'ratio of mean v1 to mean env',                     [1];
-    'varValRat',    'ratio of the variance of v1 to variance of env',	[1];
-    'varVCRat',     'ratio of the variance of vc to variance of v1',    [.1]; %0 means value change is constant across parcels
-    'rhoEV',        'covariance between de and dv',                     [-.5 0 .5];
-    'rhoEVC',       'covariance between de and dvc',                    [0];
-    'rhoVVC',       'covariance between dv and dvc',                    [0];
-    'vardvRat',     'ratio of the variance of dv to variance of v1',    [.5];
-    'vardvcRat',    'ratio of the variance of dvc to variance of vc',   [.5]; %1 means no random value change
-    'muValChangeP', '% increase in mean value',                         [0]; %0 means no trend in value
-    'G.envQuad',    '',                                                 [0 -.1 -.2];
-    'vardeRat',     'ratio of the variance of de to variance of env',   [.8];
-    'G.fundCostP',  'cost of funds to pay fees',                        [.01];
-    'numPeriods', 'number of periods we receive period 2 payoff',     [5];
+    'eprivShr'      'ratio of means of priv and public env value. s/b <1'       [.8];
+    'vpubShr'       'ratio of means of public conversion to env value.'         [1];
+    'vprivShr'      'ratio of means of priv and public conversion value s/b>1'  [1.2];
+    'G.vpubGr'        '(constant) growth rate of public conversion value'       [0];
+    'G.vprivGr'       '(constant) growth rate of priv conversion value'         [.1];
+    'eprivVarRat'   'ratio of epriv var to epub var'                            [1];
+    'vpubVarRat'    'ratio of vpub var to epub var'                             [1];
+    'vprivVarRat'   'ratio of vpriv var to vpub var'                            [1];
+    'rhoEpubPriv'   'corr btwn public and priv env value'                       [0];
+    'rhoEVpub'      'corr btwn public env and conv value'                       [0];
+    'rhoEVpubPriv'  'corr btwn public env and priv conv value'                  [-.5 0 .5];
+    'rhoEVprivPub'  'corr btwn priv env and pub conv value'                     [0];
+    'rhoEVpriv'     'corr btwen priv env and conv value'                        [0];
+    'rhoVpubPriv'   'corr between public and priv conv value'                   [0];
+    'G.envQuad'     ''                                                          [0];
+    'numPeriods'    ''                                                          [1];
+    'G.fundCostP'   ''                                                          [.1];
 };
 
 prepareCompStatArray
@@ -55,22 +59,11 @@ for ii=1:size(valArray,1)
     %parcels will remain convertible in period 1.
     options = optimset('Display','iter');
     %options.showiter = 1;
-    offer1 = [1.2*muOut(G.ind.out.v1) 0];
-    maxV1 = max(v1Values);
+    offer1 = [muOut(G.ind.out.vpriv)-muOut(G.ind.out.epriv) .1*(muOut(G.ind.out.vpriv)-muOut(G.ind.out.epriv))];
+    maxSurplus = max(privRands(:,2)-privRands(:,1));
    
-    %[expRegVal,expLandVal,choice] = land1Choice(offer1,randArrayStruct,randWgtStruct);
-%     v1Vals = randArrayStruct.land1(:,1,G.ind.out.v1);
-%     v1Vals = [0; v1Vals; 1.5*v1Vals(end)];
-%     offerCases = gridmake(v1Vals,v1Vals);
-%     for ti = 1:size(offerCases,1)
-%         expRegVal(ti) = land1Choice(offerCases(ti,:),randArrayStruct,randWgtStruct,G);
-%     end
-%     [regPayoff,caseInd] = max(expRegVal);
-%     optOfferGrid = offerCases(caseInd,:);
-    %[expRegVal,expLandVal] = land1Choice(offer1,v1Values,randValues,G);
-    %offer1(G.ind.offer1.perm) = mean(expLandVal);
-    [optOffer,regPayoff2,exf2] = fmincon(@(x) land1Choice(x,v1Values,randValues,G),offer1,[],[],[],[],0*offer1,Inf+ offer1,'',options);
-    keyboard
+    [optOffer,regPayoff2,exf2] = fmincon(@(x) -land1Choice(x,privRands,randValues,G,['case' num2str(ii)]),offer1,[],[],[],[],0*offer1,Inf+ offer1,'',options);
+    %keyboard
      save(fullfile(outputPath,[ runID '_case' num2str(ii)]))
 end
     
