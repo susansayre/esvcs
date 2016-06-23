@@ -18,14 +18,16 @@ for ii=1:length(compStat)
 end
 
 %set other indicator variables
-G.ind.choice.convert = 1;
-G.ind.choice.conserve = 2;
-G.ind.choice.delay = 3;
+C.ind.choice.conserve = 2;
+C.ind.choice.delay = 1;
+C.ind.choice.convert = 3;
+%order of choices determines what happens if payoffs are the same. This order assumes landowners take permanent
+%conservation first if indifferent, then delay, and finally immediate development.
 
-G.ind.offer1.temp = 1; 
-G.ind.offer1.perm = 2;
+C.ind.offer1.temp = 1; 
+C.ind.offer1.perm = 2;
 
-G.ind.reg2rand.epriv = 1;
-G.ind.reg2rand.vpriv2 = 2;
-G.ind.reg2rand.epub = 3;
-G.ind.reg2rand.vpub = 4;
+C.ind.reg2rand.epriv = 1;
+C.ind.reg2rand.vpriv2 = 2;
+C.ind.reg2rand.epub = 3;
+C.ind.reg2rand.vpub = 4;
